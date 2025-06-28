@@ -39,6 +39,20 @@ set(cxx-sources)
 set(html-docs)
 set(target_outputs)
 
+if (CMAKE_C_COMPILER_ID MATCHES MSVC)
+	set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /W0 /Zi /Od /Ob0 /MP /MTd")
+	set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /W0 /Zi /Od /Ob0 /MP /MTd")
+	set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /W0 /O2 /Ob2 /Oi /Ot /Oy /MP /MT /GL /GS /guard:cf")
+	set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /W0 /O2 /Ob2 /Oi /Ot /Oy /MP /MT /GL /GS /guard:cf")
+	set(CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO} /W0 /Ob1 /Ot /Zi /MP /MT")
+	set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} /W0 /Ob1 /Ot /Zi /MP /MT")
+
+	if (DEV_WITH_ASAN)
+		set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /fsanitize=address")
+		set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /fsanitize=address")
+	endif()
+endif()
+
 option(ENABLE_ASAN "Build with address sanitizer" OFF)
 if(ENABLE_ASAN)
   message(STATUS "Instrumenting with Address Sanitizer")
@@ -671,8 +685,6 @@ if(MSVC)
     zmq_check_cxx_flag_prepend("/wd26400") # Do not assign the result of an allocation or a function call with an
                                            # owner<T> return value to a raw pointer, use owner<T> instead
     zmq_check_cxx_flag_prepend("/wd26485") # Expression '...': No array to pointer decay(bounds.3)
-  else()
-    zmq_check_cxx_flag_prepend("/W3")
   endif()
 
   if(MSVC_IDE)
@@ -914,12 +926,6 @@ if(MSVC)
   # Parallel make.
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /MP")
-
-  # Compile the static lib with debug information included note: we assume here that the default flags contain some /Z
-  # flag
-  string(REGEX REPLACE "/Z.[^:]" "/Z7 " CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
-  string(REGEX REPLACE "/Z.[^:]" "/Z7 " CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
-
 endif()
 
 # -----------------------------------------------------------------------------
@@ -1438,8 +1444,7 @@ else()
 
   if(BUILD_STATIC)
     if(MINGW)
-      add_library(libzmq-static STATIC ${sources} ${public_headers} ${html-docs} ${readme-docs} ${zmq-pkgconfig}
-                                       ${CMAKE_CURRENT_BINARY_DIR}/version.rc)
+      add_library(libzmq-static STATIC ${sources} ${public_headers})
     else()
       if (CMAKE_GENERATOR STREQUAL "Xcode")
         add_library(libzmq-static STATIC ${sources} ${public_headers} ${html-docs} ${readme-docs}
